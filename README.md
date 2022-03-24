@@ -5,4 +5,4 @@ Connect the board and PC, and run the program, and connect D6 and D7 with a resi
 
 (2) what are the results
 
-PC side will show the waveform stored on board, numbers of sample will receive, duration of these samples, and do FFT, and plot the result.
+PC side will show the waveform stored on board, numbers of sample will receive, duration of these samples, and do FFT, and plot the result of FFT.
