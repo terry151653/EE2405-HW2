@@ -20,7 +20,7 @@ numOfSamples = int(s.readline())
 durationOfSamples = float(s.readline()) / 1000000
 y = np.linspace(0, 1, num = numOfSamples)  # signal vector; create numOfSamples samples
 print("numOfSamples: ", numOfSamples)
-print("durationOfSamples: ",durationOfSamples)
+print("durationOfSamples(s): ",durationOfSamples)
 for x in range(0, numOfSamples):
     line = s.readline()  # Read an echo string from B_L4S5I_IOT01A terminated with '\n'
     y[x] = float(line)

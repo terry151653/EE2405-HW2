@@ -3,8 +3,12 @@
 #include "uLCD_4DGL.h"
 #include <chrono>
 
-#define PERIOD 1250us
-#define PERIODOFSAMPLE (PERIOD / 10)
+#define MAXSAMPLES 65536
+#define SAMPLINGPERIOD 125us
+#define WAVEPERIOD 2500us
+#define SAMPLEEACHWAVE (WAVEPERIOD / SAMPLINGPERIOD)
+#define FIRSTSTEP (SAMPLEEACHWAVE / 10)
+#define SECONDSTEP (SAMPLEEACHWAVE * 5 / 10)
 
 using namespace std::chrono;
 
@@ -29,7 +33,7 @@ Ticker storeWave;
 enum STATUS {WAVEGEN = 0, DATATRANS, DATAEND};
 
 bool GenWave = 0;
-float ADCData[8192] = {0};
+float ADCData[MAXSAMPLES] = {0};
 int NumOfSamples = 0;
 int SampleCnt = 0;
 int WaveFormCnt = 0;
@@ -39,13 +43,13 @@ void gensample()
 { //Ticker ISR; Call an eventqueue to schedule a DAC sample.
     if (GenWave)
     {
-        if (++WaveFormCnt > 9)
+        if (++WaveFormCnt >= SAMPLEEACHWAVE)//0 ~ n-1
             WaveFormCnt = 0;
         
-        if (WaveFormCnt < 1)
-            OutSig = (float)WaveFormCnt / 1;
-        else if (SampleCnt > 4)
-            OutSig = 2 - (float)WaveFormCnt / 5;
+        if (WaveFormCnt < FIRSTSTEP) // < 0.1
+            OutSig = (float)WaveFormCnt / FIRSTSTEP;
+        else if (SampleCnt > SECONDSTEP) // > 0.5
+            OutSig = 2 - (float)WaveFormCnt / SECONDSTEP;
         else
             OutSig = 1.0;
     }
@@ -56,7 +60,7 @@ void wavegen()
 	{
    		if (GenWave)
 		{
-      		genWave.attach(WAVEQueue.event(gensample), PERIODOFSAMPLE);
+      		genWave.attach(WAVEQueue.event(gensample), SAMPLINGPERIOD);
    		}
    		else
 		{
@@ -69,7 +73,7 @@ void storesample()
 { //Ticker ISR; Call an eventqueue to schedule a DAC sample.
     if (GenWave)
     {
-        if (SampleCnt < 8192)
+        if (SampleCnt < MAXSAMPLES)
             ADCData[SampleCnt++] = InSig;
         else
         {
@@ -87,7 +91,7 @@ void wavestore()
 	{
    		if (GenWave)
 		{
-      		storeWave.attach(WAVEQueue.event(storesample), PERIODOFSAMPLE);
+      		storeWave.attach(WAVEQueue.event(storesample), SAMPLINGPERIOD);
             if (!duration_cast<microseconds>(DurationOfWave.elapsed_time()).count())
                 DurationOfWave.start();
    		}
@@ -140,9 +144,10 @@ void btnfallirq(bool status)
 {
 	if (!status && duration_cast<milliseconds>(DebounceA.elapsed_time()).count() > 1000)
     {
+        //restart timer when the toggle is performed
+        printuLCD(WAVEGEN);
+        DebounceA.reset();
         GenWave = true;
-        DebounceA.reset(); //restart timer when the toggle is performed
-		printfQueue.call(&printuLCD, WAVEGEN);
     }
 	else if (status && duration_cast<milliseconds>(DebounceB.elapsed_time()).count() > 1000)
     {
